@@ -64,11 +64,11 @@ int main(int argc, char **argv)
 #endif
 
 
-    QSurfaceFormat format;
-    format.setVersion(3, 2);
+//    QSurfaceFormat format;
+//    format.setVersion(4, 1);
 //    format.setMinorVersion(3);
-    format.setProfile(QSurfaceFormat::NoProfile);
-    QSurfaceFormat::setDefaultFormat(format);
+//    format.setProfile(QSurfaceFormat::CoreProfile);
+//    QSurfaceFormat::setDefaultFormat(format);
 
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

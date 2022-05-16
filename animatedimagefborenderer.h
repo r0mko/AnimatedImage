@@ -15,6 +15,7 @@ class AnimatedImageFBORenderer : protected QOpenGLFunctions
 
 public:
     AnimatedImageFBORenderer();
+    ~AnimatedImageFBORenderer();
     void createTexture(const QStringList &pngFiles);
     void initialize();
     void render();

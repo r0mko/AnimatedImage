@@ -1,10 +1,10 @@
-#version 320 es
-out lowp vec4 fragColor;
-uniform highp sampler3D texture1;
-in highp vec2 texCoord;
-uniform highp float tPos;
+#version 400 core
+out vec4 fragColor;
+uniform sampler3D texture1;
+in vec2 texCoord;
+uniform float tPos;
 
 void main() {
-//    FragColor = texture(texture1, vec3(texCoord, tPos));
-    fragColor = vec4(1.0, 0.7, 0.0, 1.0);
+    fragColor = texture(texture1, vec3(texCoord, tPos));
+//    fragColor = vec4(0.0, 0.7, 0.0, 1.0);
 }

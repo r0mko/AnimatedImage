@@ -105,11 +105,11 @@ Window {
         property size pixelSize: Qt.size(width / tileSize, height / tileSize);
 
 
-        fragmentShader: "#version 320 es
+        fragmentShader: "#version 400 core
 
-layout(location = 0) in highp vec2 qt_TexCoord0;
-layout(location = 1) uniform highp vec2 pixelSize;
-layout(location = 0) out lowp vec4 fragColor;
+in highp vec2 qt_TexCoord0;
+uniform highp vec2 pixelSize;
+out lowp vec4 fragColor;
 
 void main()
 {
@@ -158,7 +158,7 @@ void main()
             from: 0.0
             to: 1.0
             easing.type: Easing.Linear
-            duration: 1333
+            duration: 2000
         }
 //        PropertyAnimation {
 //            target: renderer

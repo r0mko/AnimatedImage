@@ -73,7 +73,6 @@ public:
     }
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override {
-        qDebug() << "Called createFramebufferObject of size" << size;
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
         format.setSamples(1);
@@ -82,7 +81,6 @@ public:
 
     AnimatedImageFBORenderer renderer;
 
-    // Renderer interface
 protected:
     void synchronize(QQuickFramebufferObject *item) override;
 };
