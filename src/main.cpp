@@ -51,25 +51,28 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
+#include <QQmlContext>
 
 #include "animatedimage.h"
 
 int main(int argc, char **argv)
 {
     QGuiApplication app(argc, argv);
+
 #if QT_VERSION > 0x060000
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
+    qDebug() << "Starting in Qt 6 mode";
 #elif QT_VERSION > 0x050000
     QQuickWindow::setSceneGraphBackend(QSGRendererInterface::OpenGL);
+    qDebug() << "Starting in Qt 5 mode";
 #endif
 
-
-//    QSurfaceFormat format;
-//    format.setVersion(4, 1);
-//    format.setMinorVersion(3);
-//    format.setProfile(QSurfaceFormat::CoreProfile);
-//    QSurfaceFormat::setDefaultFormat(format);
-
+#ifdef Q_OS_MACOS
+    QSurfaceFormat format;
+    format.setVersion(4, 5);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(format);
+#endif
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [](QObject *obj, const QUrl &objUrl) {
@@ -81,8 +84,10 @@ int main(int argc, char **argv)
             qDebug() << "Default format version" << format.options() << format.version() << QQuickWindow::sceneGraphBackend();
         }
     }, Qt::QueuedConnection);
+
+    engine.rootContext()->setContextProperty(QStringLiteral("qtVersionMajor"), QT_VERSION_MAJOR);
+    engine.rootContext()->setContextProperty(QStringLiteral("qtVersionMinor"), QT_VERSION_MINOR);
+
     engine.load(QStringLiteral("qml/main.qml"));
-
-
     return app.exec();
 }

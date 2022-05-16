@@ -8,15 +8,16 @@ QML_IMPORT_NAME = AnimatedImageTexture
 QML_IMPORT_MAJOR_VERSION = 1
 
 HEADERS += \
-    animatedimage.h \
-    animatedimagefborenderer.h
+    src/animatedimage.h \
+    src/animatedimagefborenderer.h
 SOURCES += \
-    animatedimage.cpp \
-    animatedimagefborenderer.cpp \
-    main.cpp
+    src/animatedimage.cpp \
+    src/animatedimagefborenderer.cpp \
+    src/main.cpp
+
+INCLUDEPATH += src
 
 OTHER_FILES += \
-    main.qml \
     assets/elephant_00.png \
     assets/elephant_01.png \
     assets/elephant_02.png \
@@ -51,6 +52,9 @@ OTHER_FILES += \
     assets/elephant_31.png \
     assets/elephant_32.png \
     assets/elephant_33.png \
+    qml/main.qml \
+    qml/Checker_Qt5.qml \
+    qml/Checker_Qt6.qml \
     shaders/checker.frag \
     shaders/checker.frag.qsb \
     shaders/shader.frag \
@@ -103,9 +107,12 @@ shaders.files += \
 shaders.path = $$OUT_PWD/shaders
 
 qml.files += \
-    main.qml
+    qml/main.qml \
+    qml/Checker_Qt5.qml \
+    qml/Checker_Qt6.qml
 
 qml.path = $$OUT_PWD/qml
 
-
 COPIES += assets shaders qml
+
+
