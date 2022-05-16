@@ -69,10 +69,10 @@ public:
 
     void render() override {
         renderer.render();
+        update();
     }
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override {
-        qDebug() << "Called createFramebufferObject of size" << size;
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
         format.setSamples(1);
@@ -81,7 +81,6 @@ public:
 
     AnimatedImageFBORenderer renderer;
 
-    // Renderer interface
 protected:
     void synchronize(QQuickFramebufferObject *item) override;
 };
@@ -121,7 +120,7 @@ void AnimatedImageRenderer::synchronize(QQuickFramebufferObject *item)
         aitem->setImplicitWidth(renderer.textureWidth());
         aitem->resetTextureDirty();
     }
-    renderer.setT(static_cast<AnimatedImage*>(item)->t());
+    renderer.setT(aitem->t());
     update();
 }
 
@@ -137,7 +136,6 @@ void AnimatedImage::setFileNamePattern(const QString &newFileNamePattern)
     m_fileNamePattern = newFileNamePattern;
     m_textureDirty = true;
     rebuildImageList();
-
 
     emit fileNamePatternChanged();
     update();

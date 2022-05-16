@@ -34,7 +34,7 @@ private:
     QString m_fileNamePattern;
     QStringList m_imageList;
     inline bool isTextureDirty() const { return m_textureDirty; }
-    inline bool resetTextureDirty() { m_textureDirty = false; }
+    inline void resetTextureDirty() { m_textureDirty = false; }
     bool m_textureDirty = true;
 };
 

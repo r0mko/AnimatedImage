@@ -5,13 +5,17 @@
 #include <qopenglshaderprogram.h>
 #include <qopenglfunctions_4_1_core.h>
 #include <qopenglfunctions.h>
-#include <QOpenGLTexture>
+
+class QOpenGLBuffer;
+class QOpenGLTexture;
+class QOpenGLVertexArrayObject;
 
 class AnimatedImageFBORenderer : protected QOpenGLFunctions
 {
 
 public:
     AnimatedImageFBORenderer();
+    ~AnimatedImageFBORenderer();
     void createTexture(const QStringList &pngFiles);
     void initialize();
     void render();
@@ -25,8 +29,12 @@ private:
     QOpenGLTexture *texture = nullptr;
 
     uint32_t vbo;
+    QOpenGLBuffer *m_vbo = nullptr;
+    QOpenGLVertexArrayObject *m_vao = nullptr;
     uint32_t vao;
 
     float m_t = 0.5;
-    int m_t_index;
+    int tPos_location;
+    int aPos_location;
+    int aTexCoord_location;
 };
