@@ -149,7 +149,9 @@ void AnimatedImage::rebuildImageList()
     qDebug() << "Rebuilding image list for" << m_fileNamePattern;
     QStringList patternDirComponents = m_fileNamePattern.split("/");
     QString fileFilter = patternDirComponents.takeLast();
-    QDir filePath = QDir::current();
+    bool isRelative = !m_fileNamePattern.startsWith("/");
+    QDir filePath = isRelative ? QDir::current() : QDir::root();
+    qDebug() << "Starting from" << filePath;
     for (const QString &dirComp : qAsConst(patternDirComponents)) {
         if (!filePath.cd(dirComp)) {
             qWarning() << "Failed to change directory to" << dirComp << "from" << filePath.canonicalPath();

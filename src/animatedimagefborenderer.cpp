@@ -92,7 +92,6 @@ void AnimatedImageFBORenderer::initialize()
         1.0f,  1.0f, 0.0f,      1.0f, 1.0f, // top right
     };
 
-
     bool vertexOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, QStringLiteral("shaders/shader.vert"));
     bool fragmentOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, QStringLiteral("shaders/shader.frag"));
     qDebug() << "Vertex shader ok" << vertexOk << "fragment ok" << fragmentOk << "Linking shader program" << program.link();
