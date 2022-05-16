@@ -57,12 +57,17 @@
 int main(int argc, char **argv)
 {
     QGuiApplication app(argc, argv);
-
+#if QT_VERSION > 0x060000
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
+#elif QT_VERSION > 0x050000
+    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::OpenGL);
+#endif
+
+
     QSurfaceFormat format;
-    format.setMajorVersion(4);
-    format.setMinorVersion(1);
-    format.setProfile(QSurfaceFormat::CoreProfile);
+    format.setVersion(3, 2);
+//    format.setMinorVersion(3);
+    format.setProfile(QSurfaceFormat::NoProfile);
     QSurfaceFormat::setDefaultFormat(format);
 
     QQmlApplicationEngine engine;
@@ -71,6 +76,9 @@ int main(int argc, char **argv)
         if (!obj) {
             qWarning() << "Failed to create object from" << objUrl;
             exit(-1);
+        } else {
+            QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+            qDebug() << "Default format version" << format.options() << format.version() << QQuickWindow::sceneGraphBackend();
         }
     }, Qt::QueuedConnection);
     engine.load(QStringLiteral("qml/main.qml"));

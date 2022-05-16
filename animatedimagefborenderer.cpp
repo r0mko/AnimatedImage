@@ -1,6 +1,9 @@
 #include "animatedimagefborenderer.h"
 
 #include <QDir>
+#include <QOpenGLBuffer>
+#include <QOpenGLTexture>
+#include <QOpenGLVertexArrayObject>
 #include <QOpenGLPixelTransferOptions>
 
 AnimatedImageFBORenderer::AnimatedImageFBORenderer()
@@ -68,35 +71,55 @@ void AnimatedImageFBORenderer::initialize()
         1.0f,  1.0f, 0.0f,      1.0f, 1.0f, // top right
     };
 
-    program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, QStringLiteral("shaders/shader.vert"));
-    program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, QStringLiteral("shaders/shader.frag"));
-    program.link();
-    m_t_index = program.uniformLocation("tPos");
 
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
+    bool vertexOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, QStringLiteral("shaders/shader.vert"));
+    bool fragmentOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, QStringLiteral("shaders/shader.frag"));
+    qDebug() << "Vertex shader ok" << vertexOk << "fragment ok" << fragmentOk << "Linking shader program" << program.link();
 
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    aPos_location = program.attributeLocation("aPos");
+    aTexCoord_location = program.attributeLocation("aTexCoord");
+    tPos_location = program.uniformLocation("tPos");
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr); // set pointer to 1st vertex shader uniform, aPos
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) (3 * sizeof (float))); // 2nd vertex shader uniform, aTexCoord
+    m_vao = new QOpenGLVertexArrayObject();
+    m_vao->create();
+    m_vao->bind();
+//    glGenVertexArrays(1, &vao);
+//    glGenBuffers(1, &vbo);
 
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    createTexture(QStringList());
+    m_vbo = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+    m_vbo->create();
+    m_vbo->bind();
+    m_vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
+    m_vbo->allocate(vertices, sizeof(vertices));
+    m_vbo->release();
+    m_vao->release();
+//    glBindVertexArray(vao);
+//    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+//    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+
+    program.setAttributeBuffer(aPos_location, GL_FLOAT, 0 * sizeof(float), 2, 5 * sizeof(float));
+    program.enableAttributeArray(aPos_location);
+
+    program.setAttributeBuffer(aTexCoord_location, GL_FLOAT, 2 * sizeof(float), 2, 5 * sizeof(float));
+    program.enableAttributeArray(aTexCoord_location);
+
+//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr); // set pointer to 1st vertex shader uniform, aPos
+//    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) (3 * sizeof (float))); // 2nd vertex shader uniform, aTexCoord
+
+//    glEnableVertexAttribArray(0);
+//    glEnableVertexAttribArray(1);
+//    createTexture(QStringList());
 }
 
 void AnimatedImageFBORenderer::render()
 {
     texture->bind();
     program.bind();
-    program.setUniformValue(m_t_index, m_t);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glBindVertexArray(vao);
+    program.setUniformValue(tPos_location, m_t);
+    m_vao->bind();
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // render a rectangle
+    m_vao->release();
     program.release();
 }
 
