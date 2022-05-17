@@ -49,53 +49,163 @@
 ****************************************************************************/
 
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Window 2.15
+import QtQuick.Layouts 1.15
 
 import AnimatedImageTexture 1.0
 
 Window {
     id: root
-    width: 600
-    height: 600
+    width: 620
+    height: 680
     visible: true
+    color: "#eee"
 
-    Loader {
+    ColumnLayout {
         anchors.fill: parent
-        property color color1: "#333"
-        property color color2: "#444"
-        source: "Checker_Qt%1.qml".arg(qtVersionMajor)
-    }
+        anchors.margins: 10
 
-    AnimatedImage {
-        id: _image
-        anchors.centerIn: parent
-        fileNamePattern: "assets/elephant_*.png"
-    }
+        Item {
+            id: _container
+            width: 600
+            height: 600
 
-    SequentialAnimation {
-        running: true
-        loops: Animation.Infinite
+            Loader {
+                anchors.fill: parent
+                property color color1: "#333"
+                property color color2: "#444"
+                source: "Checker_Qt%1.qml".arg(qtVersionMajor)
+            }
 
-        PropertyAnimation {
-            target: _image
-            property: "t"
-            from: 0.0
-            to: 1.0
-            easing.type: Easing.Linear
-            duration: 1500
+            AnimatedImage {
+                id: _image
+                t2: t1 + _blur.value
+                blur: _blurCheckbox.checked
+                anchors.centerIn: parent
+                fileNamePattern: "assets/elephant_*.png"
+            }
+
+            PropertyAnimation {
+                id: _animation
+                target: _image
+                running: true
+                loops: Animation.Infinite
+                property: "t1"
+                from: 0.0
+                to: 1.0
+                easing.type: Easing.Linear
+                duration: _animationDuration.value
+            }
+
+            Item {
+                id: _textContainer
+                width: 120
+                height: 180
+                visible: false
+                property int currentFigure: 0
+
+                Text {
+                    id: _text
+                    anchors.centerIn: parent
+                    color: "#fff"
+                    font.pixelSize: 150
+                    text: "0"
+                }
+
+                function grabImage() {
+                    _text.text = String(currentFigure)
+                    _textContainer.grabToImage(function(result) {
+                        _image.appendFrame(result);
+                        createNextFrame();
+                    });
+                }
+
+                function createNextFrame() {
+                    if (currentFigure < 9) {
+                        ++currentFigure;
+                        grabImage();
+                    }
+                }
+            }
+
         }
-//        PropertyAnimation {
-//            target: renderer
-//            property: "t"
-//            from: 1.0
-//            to: 0.0
-//            easing.type: Easing.Linear
-//            duration: 1333
-//        }
-//        PauseAnimation {
-//            duration: 500
 
-//        }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "#eee"
+
+            RowLayout {
+                anchors.centerIn: parent
+
+                Button {
+                    text: checked ? "Elephant mode" : "Numbers mode"
+                    checkable: true
+                    onClicked: {
+                        if (checked) {
+                            _image.beginCreateAnimation(_textContainer.width, _textContainer.height, 10)
+                            _textContainer.grabImage()
+                        } else {
+                            _image.reset()
+                        }
+                    }
+                }
+
+                Label {
+                    text: "Blur amount:"
+                }
+
+
+                Slider {
+                    id: _blur
+                    from: 0.0
+                    to: 1.0
+
+                    Label {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: -16
+                        text: _blur.value.toFixed(2)
+                    }
+                }
+
+                CheckBox {
+                    id: _blurCheckbox
+                    checked: true
+                    text: "Blur:"
+                }
+
+                Label {
+                    text: "Duration:"
+                }
+
+                Rectangle {
+                    border.color: "#000"
+                    border.width: 1
+                    radius: 3
+                    color: "#fff"
+                    width: _animationDuration.width + 20
+                    height: _animationDuration.height + 10
+
+                    TextInput {
+                        id: _animationDuration
+                        anchors.centerIn: parent
+                        property int value: 1500
+                        validator: IntValidator {}
+                        text: value
+                        onAccepted: {
+                            _animation.stop()
+                            value = text
+                            _animation.restart()
+                            focus = false
+                        }
+                    }
+                }
+
+                Label {
+                    text: "ms"
+                }
+            }
+        }
     }
-
 }

@@ -13,17 +13,17 @@ ShaderEffect {
 
 in highp vec2 qt_TexCoord0;
 uniform highp vec2 pixelSize;
-uniform vec4 color1;
-uniform vec4 color2;
+uniform lowp vec4 color1;
+uniform lowp vec4 color2;
 out lowp vec4 fragColor;
 
 void main()
 {
-mediump vec2 tc = sign(sin(3.14159265358979323846 * qt_TexCoord0 * pixelSize));
-if (tc.x != tc.y)
-    fragColor = color1;
-else
-    fragColor = color2;
+    mediump vec2 tc = sign(sin(3.14159265358979323846 * qt_TexCoord0 * pixelSize));
+    if (tc.x != tc.y)
+        fragColor = color1;
+    else
+        fragColor = color2;
 
 }
 "

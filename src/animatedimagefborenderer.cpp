@@ -4,7 +4,9 @@
 #include <QOpenGLBuffer>
 #include <QOpenGLTexture>
 #include <QOpenGLVertexArrayObject>
+#include <QSGTexture>
 #include <QOpenGLPixelTransferOptions>
+#include <QOpenGLFramebufferObject>
 
 AnimatedImageFBORenderer::AnimatedImageFBORenderer()
 {
@@ -35,16 +37,13 @@ AnimatedImageFBORenderer::~AnimatedImageFBORenderer()
 void AnimatedImageFBORenderer::createTexture(const QStringList &pngFiles)
 {
     if (!texture) {
-        qDebug() << "Creating texture...";
         texture = new QOpenGLTexture(QOpenGLTexture::Target3D);
-        texture->setFormat(QOpenGLTexture::RGBA8_UNorm);
-        texture->setWrapMode(QOpenGLTexture::Repeat);
-        texture->setMipLevels(1);
-        texture->setMagnificationFilter(QOpenGLTexture::Linear);
+        initTexture();
     }
 
     if (texture->isStorageAllocated()) {
         texture->destroy();
+        initTexture();
     }
 
     if (pngFiles.isEmpty()) {
@@ -78,7 +77,30 @@ void AnimatedImageFBORenderer::createTexture(const QStringList &pngFiles)
         glImage = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
         texture->setData(0, 0, i, texture->width(), texture->height(), 1, QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, glImage.constBits(), &opts);
     }
-    qDebug() << "Finished loading" << pngFiles.size() << "images to 3D texture";
+}
+
+void AnimatedImageFBORenderer::createTexture(int width, int height, int depth)
+{
+    if (!texture) {
+        texture = new QOpenGLTexture(QOpenGLTexture::Target3D);
+        initTexture();
+    }
+
+    if (texture->isStorageAllocated()) {
+        qDebug() << "Destroying texture";
+        texture->destroy();
+        initTexture();
+    }
+    texture->setSize(width, height, depth);
+    texture->allocateStorage(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8);
+}
+
+void AnimatedImageFBORenderer::initTexture()
+{
+    texture->setFormat(QOpenGLTexture::RGBA8_UNorm);
+    texture->setWrapMode(QOpenGLTexture::Repeat);
+    texture->setMipLevels(1);
+    texture->setMagnificationFilter(QOpenGLTexture::Linear);
 }
 
 void AnimatedImageFBORenderer::initialize()
@@ -92,13 +114,16 @@ void AnimatedImageFBORenderer::initialize()
         1.0f,  1.0f, 0.0f,      1.0f, 1.0f, // top right
     };
 
-    bool vertexOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, QStringLiteral("shaders/shader.vert"));
-    bool fragmentOk = program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, QStringLiteral("shaders/shader.frag"));
-    qDebug() << "Vertex shader ok" << vertexOk << "fragment ok" << fragmentOk << "Linking shader program" << program.link();
+    program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, QLatin1String("shaders/shader.vert"));
+    program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, QLatin1String("shaders/shader.frag"));
+    program.link();
 
-    aPos_location = program.attributeLocation("aPos");
-    aTexCoord_location = program.attributeLocation("aTexCoord");
-    tPos_location = program.uniformLocation("tPos");
+    pos.vCoord = program.attributeLocation("vCoord");
+    pos.uv = program.attributeLocation("uv");
+    pos.t1 = program.uniformLocation("t1");
+    pos.t2 = program.uniformLocation("t2");
+    pos.depth = program.uniformLocation("depth");
+    pos.blur = program.uniformLocation("blur");
 
     m_vao = new QOpenGLVertexArrayObject();
     m_vao->create();
@@ -110,11 +135,11 @@ void AnimatedImageFBORenderer::initialize()
     m_vbo->setUsagePattern(QOpenGLBuffer::StaticDraw);
     m_vbo->allocate(vertices, sizeof(vertices));
 
-    program.setAttributeBuffer(aPos_location, GL_FLOAT, 0 * sizeof(float), 3, 5 * sizeof(float));
-    program.enableAttributeArray(aPos_location);
+    program.setAttributeBuffer(pos.vCoord, GL_FLOAT, 0 * sizeof(float), 3, 5 * sizeof(float));
+    program.enableAttributeArray(pos.vCoord);
 
-    program.setAttributeBuffer(aTexCoord_location, GL_FLOAT, 3 * sizeof(float), 2, 5 * sizeof(float));
-    program.enableAttributeArray(aTexCoord_location);
+    program.setAttributeBuffer(pos.uv, GL_FLOAT, 3 * sizeof(float), 2, 5 * sizeof(float));
+    program.enableAttributeArray(pos.uv);
 
     m_vbo->release();
     m_vao->release();
@@ -124,23 +149,16 @@ void AnimatedImageFBORenderer::render()
 {
     texture->bind();
     program.bind();
-    program.setUniformValue(tPos_location, m_t);
+    program.setUniformValue(pos.t1, t1);
+    program.setUniformValue(pos.t2, t2);
+    program.setUniformValue(pos.depth, texture->depth());
+    program.setUniformValue(pos.blur, blur);
     m_vao->bind();
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // render a rectangle
     m_vao->release();
     program.release();
-}
-
-float AnimatedImageFBORenderer::t() const
-{
-    return m_t;
-}
-
-void AnimatedImageFBORenderer::setT(float newT)
-{
-    m_t = newT;
 }
 
 int AnimatedImageFBORenderer::textureWidth() const
@@ -157,4 +175,18 @@ int AnimatedImageFBORenderer::textureHeight() const
         return 0;
     }
     return texture->height();
+}
+
+void AnimatedImageFBORenderer::beginTextureUpload(int width, int height, int depth)
+{
+    createTexture(width, height, depth);
+}
+
+void AnimatedImageFBORenderer::uploadFrame(int frame, QImage image)
+{
+    Q_ASSERT_X(texture, Q_FUNC_INFO, "texture not created");
+    QImage glImage = image.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+    QOpenGLPixelTransferOptions opts;
+    opts.setAlignment(1);
+    texture->setData(0, 0, frame, texture->width(), texture->height(), 1, QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, glImage.constBits(), &opts);
 }

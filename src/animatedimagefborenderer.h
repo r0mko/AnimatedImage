@@ -7,6 +7,7 @@
 #include <qopenglfunctions.h>
 
 class QOpenGLBuffer;
+class QSGTexture;
 class QOpenGLTexture;
 class QOpenGLVertexArrayObject;
 
@@ -17,24 +18,36 @@ public:
     AnimatedImageFBORenderer();
     ~AnimatedImageFBORenderer();
     void createTexture(const QStringList &pngFiles);
+    void createTexture(int width, int height, int depth);
+    void initTexture();
     void initialize();
     void render();
-    float t() const;
-    void setT(float newT);
 
     int textureWidth() const;
     int textureHeight() const;
+
+    void beginTextureUpload(int width, int height, int depth);
+    void uploadFrame(int frame, QImage image);
+    void endTextureUpload();
+    float t1 = 0.5;
+    float t2 = 0.5;
+    bool blur;
+
 private:
+
     QOpenGLShaderProgram program;
     QOpenGLTexture *texture = nullptr;
 
-    uint32_t vbo;
     QOpenGLBuffer *m_vbo = nullptr;
     QOpenGLVertexArrayObject *m_vao = nullptr;
-    uint32_t vao;
 
-    float m_t = 0.5;
-    int tPos_location;
-    int aPos_location;
-    int aTexCoord_location;
+    struct {
+        int vCoord;
+        int uv;
+        int t1;
+        int t2;
+        int depth;
+        int blur;
+    } pos;
+
 };

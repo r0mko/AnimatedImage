@@ -52,12 +52,11 @@
 #include "animatedimagefborenderer.h"
 
 #include <QOpenGLFramebufferObject>
-
+#include <QThread>
+#include <QDir>
+#include <QQuickItemGrabResult>
 #include <QtQuick/QQuickWindow>
-#include <qsgsimpletexturenode.h>
 #include "animatedimage.h"
-#include <QDirIterator>
-
 
 class AnimatedImageRenderer : public QQuickFramebufferObject::Renderer
 {
@@ -97,30 +96,33 @@ QQuickFramebufferObject::Renderer *AnimatedImage::createRenderer() const
     return new AnimatedImageRenderer();
 }
 
-qreal AnimatedImage::t() const
-{
-    return m_t;
-}
-
-void AnimatedImage::setT(qreal newT)
-{
-    if (m_t == newT)
-        return;
-    m_t = newT;
-    update();
-    emit tChanged();
-}
-
 void AnimatedImageRenderer::synchronize(QQuickFramebufferObject *item)
 {
     AnimatedImage* aitem = static_cast<AnimatedImage*>(item);
-    if (aitem->isTextureDirty()) {
+
+    if (aitem->buildMode.state > AnimatedImage::BuildingMode::Inactive) {
+        if (aitem->buildMode.state == AnimatedImage::BuildingMode::Requested) {
+            renderer.beginTextureUpload(aitem->buildMode.width, aitem->buildMode.height, aitem->buildMode.depth);
+            aitem->setImplicitHeight(renderer.textureHeight());
+            aitem->setImplicitWidth(renderer.textureWidth());
+            aitem->buildMode.state = AnimatedImage::BuildingMode::Synchronized;
+        }
+        int i = 0;
+        if (aitem->buildMode.pendingImages.size() == aitem->buildMode.depth) {
+            for (const QImage &img : aitem->buildMode.pendingImages) {
+                renderer.uploadFrame(i++, img);
+            }
+            aitem->buildMode.finishUpload();
+        }
+    } else if (aitem->isTextureDirty()) {
         renderer.createTexture(aitem->m_imageList);
         aitem->setImplicitHeight(renderer.textureHeight());
         aitem->setImplicitWidth(renderer.textureWidth());
         aitem->resetTextureDirty();
     }
-    renderer.setT(aitem->t());
+    renderer.blur = aitem->blur();
+    renderer.t1 = aitem->t1();
+    renderer.t2 = aitem->t2();
     update();
 }
 
@@ -136,22 +138,58 @@ void AnimatedImage::setFileNamePattern(const QString &newFileNamePattern)
     m_fileNamePattern = newFileNamePattern;
     m_textureDirty = true;
     rebuildImageList();
-
+    buildMode.state = BuildingMode::Inactive;
+    buildMode.pendingImages.clear();
     emit fileNamePatternChanged();
     update();
-    qDebug() << textureFollowsItemSize();
-
 }
+
+void AnimatedImage::beginCreateAnimation(int width, int height, int frameCount)
+{
+    buildMode.begin(width, height, frameCount);
+    update();
+}
+
+void AnimatedImage::appendFrame(QVariant val)
+{
+    switch (buildMode.state) {
+    case AnimatedImage::BuildingMode::Inactive:
+        qWarning() << "Creating is not started. Before adding frames begin creating by calling beginCreateAnimation";
+        return;
+    case AnimatedImage::BuildingMode::Requested:
+        qWarning() << "Not initialized yet. Please repeat later.";
+        return;
+    case AnimatedImage::BuildingMode::Synchronized:
+        buildMode.state = BuildingMode::Uploading;
+    case AnimatedImage::BuildingMode::Uploading: {
+        QMutexLocker lck(&buildMode.mutex);
+        QQuickItemGrabResult *result = qvariant_cast<QQuickItemGrabResult*>(val);
+        buildMode.pendingImages.append(result->image());
+        break;
+    }
+        break;
+    case AnimatedImage::BuildingMode::UploadCompleted:
+        qWarning() << "Too many frames. Uploading of" << buildMode.depth << "images is completed";
+        return;
+    }
+}
+
+void AnimatedImage::reset()
+{
+    m_textureDirty = true;
+    rebuildImageList();
+    buildMode.state = BuildingMode::Inactive;
+    update();
+}
+
 
 void AnimatedImage::rebuildImageList()
 {
     m_imageList.clear();
-    qDebug() << "Rebuilding image list for" << m_fileNamePattern;
     QStringList patternDirComponents = m_fileNamePattern.split("/");
     QString fileFilter = patternDirComponents.takeLast();
     bool isRelative = !m_fileNamePattern.startsWith("/");
     QDir filePath = isRelative ? QDir::current() : QDir::root();
-    qDebug() << "Starting from" << filePath;
     for (const QString &dirComp : qAsConst(patternDirComponents)) {
         if (!filePath.cd(dirComp)) {
             qWarning() << "Failed to change directory to" << dirComp << "from" << filePath.canonicalPath();
@@ -163,4 +201,60 @@ void AnimatedImage::rebuildImageList()
     for (const auto &it : filePath.entryInfoList(QDir::NoFilter, QDir::Name)) {
         m_imageList << it.filePath();
     }
+}
+
+void AnimatedImage::BuildingMode::begin(int width, int height, int frameCount)
+{
+    state = Requested;
+    this->width = width;
+    this->height = height;
+    this->depth = frameCount;
+}
+
+void AnimatedImage::BuildingMode::finishUpload()
+{
+    pendingImages.clear();
+    state = UploadCompleted;
+}
+
+qreal AnimatedImage::t1() const
+{
+    return m_t1;
+}
+
+void AnimatedImage::setT1(qreal newT1)
+{
+    if (qFuzzyCompare(m_t1, newT1))
+        return;
+    m_t1 = newT1;
+    emit t1Changed();
+    update();
+}
+
+qreal AnimatedImage::t2() const
+{
+    return m_t2;
+}
+
+void AnimatedImage::setT2(qreal newT2)
+{
+    if (qFuzzyCompare(m_t2, newT2))
+        return;
+    m_t2 = newT2;
+    emit t2Changed();
+    update();
+}
+
+bool AnimatedImage::blur() const
+{
+    return m_blur;
+}
+
+void AnimatedImage::setBlur(bool newBlur)
+{
+    if (m_blur == newBlur)
+        return;
+    m_blur = newBlur;
+    emit blurChanged();
+    update();
 }
