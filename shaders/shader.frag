@@ -18,8 +18,8 @@ void main() {
         vec4 col = texture(texture1, vec3(texCoord, t1));
         int c = 1;
         float increment = 1.0 / depth;
-        float tf = ceil(t1 * depth) / depth;
-        float tl = floor(t2 * depth) / depth;
+        float tf = (ceil(t1 * depth) + 0.5) / depth;
+        float tl = (floor(t2 * depth) - 0.5) / depth;
         while (tf < tl) {
             col += texture(texture1, vec3(texCoord, tf));
             tf += increment;
